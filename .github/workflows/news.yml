@@ -45,3 +45,11 @@ jobs:
             git commit -m "Initialize processed Trump posts"
             git push
           fi
+      - name: Test Discord Webhook
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl --fail-with-body -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"content":"✅ Trump News Bot is ONLINE!"}' \
+            "$DISCORD_WEBHOOK"
