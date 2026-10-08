@@ -30,26 +30,27 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: python bot.py
 
+     
       - name: Save processed posts
         run: |
-          if [ -f seen.json ] && ! git diff --quiet -- seen.json; then
+          if [ -f seen.json ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            cp seen.json /tmp/trump-seen.json
+            git fetch origin main
+            git reset --hard origin/main
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("seen.json")
+          previous = set(json.loads(p.read_text())) if p.exists() else set()
+          current = set(json.loads(Path("/tmp/trump-seen.json").read_text()))
+          p.write_text(json.dumps(sorted(previous | current), indent=2))
+          PY
             git add seen.json
-            git commit -m "Update processed Trump posts"
-            git push
-          elif [ -f seen.json ] && ! git ls-files --error-unmatch seen.json >/dev/null 2>&1; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add seen.json
-            git commit -m "Initialize processed Trump posts"
-            git push
+            if ! git diff --cached --quiet; then
+              git commit -m "Update processed Trump posts"
+              git push origin HEAD:main
+            fi
           fi
-      - name: Test Discord Webhook
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: |
-          curl --fail-with-body -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"content":"✅ Trump News Bot is ONLINE!"}' \
-            "$DISCORD_WEBHOOK"
+
